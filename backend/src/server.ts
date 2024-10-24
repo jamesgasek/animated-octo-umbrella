@@ -244,10 +244,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   }
 });
 
-process.on('SIGINT', () => {
-  db.close();
-  process.exit();
-});
+
 
 // Replace the bottom part of server.ts with:
 if (process.env.NODE_ENV !== 'test') {
@@ -256,5 +253,10 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`Server running at http://localhost:${port}`);
   });
 }
+
+process.on('SIGINT', () => {
+  db.close();
+  process.exit();
+});
 
 export { app };
