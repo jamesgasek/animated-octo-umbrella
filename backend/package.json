@@ -5,7 +5,7 @@
   "description": "Backend for weather app",
   "main": "src/server.ts",
   "scripts": {
-    "dev": "node --watch --experimental-strip-types src/server.ts",
+    "dev": "node --loader ts-node/esm src/server.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -20,7 +20,10 @@
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
-    "@types/express": "^5.0.0"
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.7.9",
+    "ts-node": "^10.9.2",
+    "tslib": "^2.8.0"
   },
   "jest": {
     "preset": "ts-jest/presets/default-esm",

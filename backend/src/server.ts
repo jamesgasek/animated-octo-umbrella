@@ -23,7 +23,8 @@ db.exec(`
     zip_code TEXT PRIMARY KEY,
     lat REAL NOT NULL,
     lon REAL NOT NULL,
-    updated_at INTEGER NOT NULL
+    updated_at INTEGER NOT NULL,
+    used_at INTEGER NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS current_weather (
@@ -41,15 +42,22 @@ db.exec(`
 
 // Prepare statements
 const statements = {
-  getCoords: db.prepare('SELECT * FROM coordinates WHERE zip_code = ?'),
-  setCoords: db.prepare('INSERT OR REPLACE INTO coordinates (zip_code, lat, lon, updated_at) VALUES (?, ?, ?, ?)'),
   getCurrentWeather: db.prepare('SELECT * FROM current_weather WHERE location_key = ?'),
   setCurrentWeather: db.prepare('INSERT OR REPLACE INTO current_weather (location_key, data, updated_at) VALUES (?, ?, ?)'),
   getForecast: db.prepare('SELECT * FROM forecasts WHERE location_key = ?'),
   setForecast: db.prepare('INSERT OR REPLACE INTO forecasts (location_key, data, updated_at) VALUES (?, ?, ?)'),
   cleanupWeather: db.prepare('DELETE FROM current_weather WHERE updated_at < ?'),
   cleanupForecasts: db.prepare('DELETE FROM forecasts WHERE updated_at < ?'),
-  cleanupCoords: db.prepare('DELETE FROM coordinates WHERE updated_at < ?')
+  cleanupCoords: db.prepare('DELETE FROM coordinates WHERE updated_at < ?'),
+  getCoords: db.prepare('SELECT * FROM coordinates WHERE zip_code = ?'),
+  setCoords: db.prepare('INSERT OR REPLACE INTO coordinates (zip_code, lat, lon, updated_at, used_at) VALUES (?, ?, ?, ?, ?)'),
+  getRecentZips: db.prepare(`
+    SELECT DISTINCT zip_code, used_at 
+    FROM coordinates 
+    ORDER BY used_at DESC 
+    LIMIT 5
+  `),
+  updateUsedAt: db.prepare('UPDATE coordinates SET used_at = ? WHERE zip_code = ?')
 };
 
 // Types
@@ -73,6 +81,14 @@ interface GeoData {
   lon: number;
 }
 
+interface CoordinateRow {
+  zip_code: string;
+  lat: number;
+  lon: number;
+  updated_at: number;
+  used_at: number;
+}
+
 // Cache cleanup function
 function cleanupCache() {
   const now = Date.now();
@@ -83,9 +99,11 @@ function cleanupCache() {
 
 async function getCoordinates(zipCode: string): Promise<GeoData> {
   const now = Date.now();
-  const cached : any = statements.getCoords.get(zipCode);
+  const cached: any = statements.getCoords.get(zipCode);
 
   if (cached && (now - cached.updated_at) < CACHE_DURATIONS.COORDINATES) {
+    // Update the used_at timestamp
+    statements.updateUsedAt.run(now, zipCode);
     return { lat: cached.lat, lon: cached.lon };
   }
 
@@ -95,7 +113,7 @@ async function getCoordinates(zipCode: string): Promise<GeoData> {
   if (!response.ok) throw new Error('Invalid zip code');
   
   const data = await response.json() as GeoData;
-  statements.setCoords.run(zipCode, data.lat, data.lon, now);
+  statements.setCoords.run(zipCode, data.lat, data.lon, now, now);
   
   return data;
 }
@@ -110,7 +128,7 @@ async function getWeather(lat: number, lon: number): Promise<WeatherData> {
   }
 
   const response = await fetch(
-    `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${process.env.OPENWEATHER_API_KEY}&units=metric`
+    `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${process.env.OPENWEATHER_API_KEY}&units=imperial`
   );
   if (!response.ok) throw new Error('Weather data unavailable');
   
@@ -130,7 +148,7 @@ async function getForecast(lat: number, lon: number): Promise<ForecastData> {
   }
 
   const response = await fetch(
-    `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${process.env.OPENWEATHER_API_KEY}&units=metric`
+    `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${process.env.OPENWEATHER_API_KEY}&units=imperial`
   );
   if (!response.ok) throw new Error('Forecast data unavailable');
   
@@ -184,8 +202,8 @@ app.get('/weather/:zipCode', async (
     res.json({
       current: {
         temperature: {
-          celsius: weather.main.temp,
-          fahrenheit: (weather.main.temp * 9/5) + 32
+          fahrenheit: weather.main.temp,
+          celsius: (weather.main.temp - 32) * 5/9,
         },
         humidity: weather.main.humidity,
         windSpeed: weather.wind.speed,
@@ -197,6 +215,21 @@ app.get('/weather/:zipCode', async (
     console.timeEnd('weather-request');
   } catch (error) {
     next(error);
+  }
+});
+
+app.get('/recent-locations', (_req, res) => {
+  try {
+    const recentZips = (statements.getRecentZips.all() as CoordinateRow[]).map(row => ({
+      zipCode: row.zip_code,
+      lastUsed: new Date(row.used_at).toISOString()
+    }));
+    
+    res.json({
+      recentLocations: recentZips
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch recent locations' });
   }
 });
 
