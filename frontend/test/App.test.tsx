@@ -4,113 +4,111 @@ import userEvent from '@testing-library/user-event';
 import App from '../src/App';
 import React from 'react';
 
-// Mock fetch
 global.fetch = vi.fn();
 
 describe('Weather App', () => {
- beforeEach(() => {
-   vi.clearAllMocks();
- });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
- test('renders main heading', () => {
-   render(<App />);
-   expect(screen.getByText('My Awesome Weather App')).toBeInTheDocument();
- });
+  test('renders main heading', () => {
+    render(<App />);
+    expect(screen.getByText('My Awesome Weather App')).toBeInTheDocument();
+  });
 
- test('shows error for invalid zip code format', async () => {
-   render(<App />);
-   
-   const input = screen.getByPlaceholderText('Enter ZIP code');
-   const submitButton = screen.getByRole('button');
+  test('shows error for invalid zip code format', async () => {
+    render(<App />);
 
-   await userEvent.type(input, '123');
-   await userEvent.click(submitButton);
+    const input = screen.getByPlaceholderText('Enter ZIP code');
+    const submitButton = screen.getByRole('button');
 
-   expect(screen.getByText('Please enter a valid 5-digit ZIP code')).toBeInTheDocument();
- });
+    await userEvent.type(input, '123');
+    await userEvent.click(submitButton);
 
- test('shows error when API returns 400', async () => {
-   (global.fetch as any).mockResolvedValueOnce({
-     status: 400,
-     ok: false
-   });
+    expect(screen.getByText('Please enter a valid 5-digit ZIP code')).toBeInTheDocument();
+  });
 
-   render(<App />);
-   
-   const input = screen.getByPlaceholderText('Enter ZIP code');
-   const submitButton = screen.getByRole('button');
+  test('shows error when API returns 400', async () => {
+    (global.fetch as any).mockResolvedValueOnce({
+      status: 400,
+      ok: false
+    });
 
-   await userEvent.type(input, '12345');
-   await userEvent.click(submitButton);
+    render(<App />);
 
-   expect(screen.getByText('Zip code is not valid. please try again.')).toBeInTheDocument();
- });
+    const input = screen.getByPlaceholderText('Enter ZIP code');
+    const submitButton = screen.getByRole('button');
 
- test('displays weather data on successful API call', async () => {
-   const mockWeatherData = {
-     current: {
-       temperature: {
-         celsius: 20,
-         fahrenheit: 68
-       },
-       humidity: 65,
-       windSpeed: 5.2,
-       description: "sunny",
-       icon: "01d"
-     },
-forecast: Array(5).fill(null).map((_, index) => {
-      // Create a new date object and add index days to it
-      const date = new Date('2024-03-20');
-      date.setDate(date.getDate() + index);
-      
-      return {
-        date: date.toISOString().split('T')[0], // Format: YYYY-MM-DD
+    await userEvent.type(input, '12345');
+    await userEvent.click(submitButton);
+
+    expect(screen.getByText('Zip code is not valid. please try again.')).toBeInTheDocument();
+  });
+
+  test('displays weather data on successful API call', async () => {
+    const mockWeatherData = {
+      current: {
         temperature: {
-          min: 15,
-          max: 25
+          celsius: 20,
+          fahrenheit: 68
         },
-        humidity: 60,
-        windSpeed: 4.8,
+        humidity: 65,
+        windSpeed: 5.2,
         description: "sunny",
         icon: "01d"
-      };
-    })
-  };
+      },
+      forecast: Array(5).fill(null).map((_, index) => {
+        const date = new Date('2024-03-20');
+        date.setDate(date.getDate() + index);
 
-   (global.fetch as any).mockResolvedValueOnce({
-     ok: true,
-     json: async () => mockWeatherData,
-   });
+        return {
+          date: date.toISOString().split('T')[0], // Format: YYYY-MM-DD
+          temperature: {
+            min: 15,
+            max: 25
+          },
+          humidity: 60,
+          windSpeed: 4.8,
+          description: "sunny",
+          icon: "01d"
+        };
+      })
+    };
 
-   render(<App />);
-   
-   const input = screen.getByPlaceholderText('Enter ZIP code');
-   const submitButton = screen.getByRole('button');
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockWeatherData,
+    });
 
-   await userEvent.type(input, '12345');
-   await userEvent.click(submitButton);
+    render(<App />);
 
-   await waitFor(() => {
-     expect(screen.getByText('Current Weather')).toBeInTheDocument();
-     expect(screen.getByText('20°C')).toBeInTheDocument();
-     expect(screen.getByText('68°F')).toBeInTheDocument();
-     expect(screen.getByText('5-Day Forecast')).toBeInTheDocument();
-   });
- });
+    const input = screen.getByPlaceholderText('Enter ZIP code');
+    const submitButton = screen.getByRole('button');
 
- test('shows loading state while fetching', async () => {
-   (global.fetch as any).mockImplementation(() => 
-     new Promise(resolve => setTimeout(resolve, 100))
-   );
+    await userEvent.type(input, '12345');
+    await userEvent.click(submitButton);
 
-   render(<App />);
-   
-   const input = screen.getByPlaceholderText('Enter ZIP code');
-   const submitButton = screen.getByRole('button');
+    await waitFor(() => {
+      expect(screen.getByText('Current Weather')).toBeInTheDocument();
+      expect(screen.getByText('20°C')).toBeInTheDocument();
+      expect(screen.getByText('68°F')).toBeInTheDocument();
+      expect(screen.getByText('5-Day Forecast')).toBeInTheDocument();
+    });
+  });
 
-   await userEvent.type(input, '12345');
-   await userEvent.click(submitButton);
+  test('shows loading state while fetching', async () => {
+    (global.fetch as any).mockImplementation(() =>
+      new Promise(resolve => setTimeout(resolve, 100))
+    );
 
-   expect(submitButton).toBeDisabled();
- });
+    render(<App />);
+
+    const input = screen.getByPlaceholderText('Enter ZIP code');
+    const submitButton = screen.getByRole('button');
+
+    await userEvent.type(input, '12345');
+    await userEvent.click(submitButton);
+
+    expect(submitButton).toBeDisabled();
+  });
 });
