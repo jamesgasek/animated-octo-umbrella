@@ -2,7 +2,8 @@
 import { describe, expect, test } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import App from '../../src/App';
+// import App from '../../src/App';
+import Root from '../../src/Root';
 import React from 'react';
 
 describe('Weather App Integration Tests', () => {
@@ -30,7 +31,7 @@ let itif = it
   });
 
   itif('fetches real weather data for valid ZIP code', async () => {
-    render(<App />);
+    render(<Root />);
     
     const input = screen.getByPlaceholderText('Enter ZIP code');
     const submitButton = screen.getByRole('button');
@@ -49,21 +50,23 @@ let itif = it
   });
 
   itif('handles invalid ZIP code with real API', async () => {
-    render(<App />);
+    render(<Root />);
     
     const input = screen.getByPlaceholderText('Enter ZIP code');
     const submitButton = screen.getByRole('button');
-    
+   
+    await userEvent.clear(input);
     await userEvent.type(input, '00000'); // Invalid ZIP code
     await userEvent.click(submitButton);
     
     await waitFor(() => {
-      expect(screen.getByText('Zip code is not valid. please try again.')).toBeInTheDocument();
+      expect(screen.getByText("Zip code is not valid. please try again.")).toBeInTheDocument();
     });
   });
 
+
   itif('displays real forecast data', async () => {
-    render(<App />);
+    render(<Root />);
     
     const input = screen.getByPlaceholderText('Enter ZIP code');
     const submitButton = screen.getByRole('button');
