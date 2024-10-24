@@ -7,7 +7,7 @@
     "backend"
   ],
   "scripts": {
-    "dev": "npm run dev -w frontend & npm run dev -w backend",
+    "dev": "npm run dev -w frontend & npm run dev -w backend && wait",
     "test": "npm run test -w frontend && npm run test -w backend",
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces"
