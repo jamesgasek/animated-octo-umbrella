@@ -46,11 +46,18 @@ export default function App() {
       setLoading(true);
       setError('');
       const response = await fetch(`${API_URL}/weather/${zipCode}`);
-      if (!response.ok) throw new Error('Failed to fetch weather data');
+      if(response.status==400){
+        setError('Zip code is not valid. please try again.');
+        throw new Error('Failed to fetch weather data');
+      }
+      if (!response.ok) {
+        setError('Could not fetch weather data. Please try again.');
+        throw new Error('Failed to fetch weather data');
+      }
       const data: WeatherData = await response.json();
       setWeather(data);
     } catch (err) {
-      setError('Could not fetch weather data. Please try again.');
+      // console.log(err)
     } finally {
       setLoading(false);
     }
@@ -60,7 +67,7 @@ export default function App() {
     <Container size="3">
       <Box py="6">
         <Heading size="7" /* align="center" */ mb="6" weight="bold">
-          Weather Lookup
+          My Awesome Weather App
         </Heading>
 
         <Form.Root onSubmit={fetchWeather}>
@@ -81,7 +88,7 @@ export default function App() {
                 size="3"
               >
                 {loading ? (
-                  <Loader2 width="16" height="16" />
+                  <Loader2 width="16" height="16" style={{ animation: "spin 1s linear infinite" }}  />
                 ) : (
                   <Search width="16" height="16" />
                 )}
@@ -162,7 +169,7 @@ export default function App() {
               </Heading>
               <Grid columns="5" gap="3">
                 {weather.forecast.map((day) => (
-                  <Card key={day.date} size="2">
+                  <Card key={day.date} size="2" role='article'>
                     <Flex direction="column" align="center" gap="2">
                       <Text size="2" weight="medium">
                         {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}

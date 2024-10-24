@@ -201,7 +201,7 @@ app.get('/weather/:zipCode', async (
 });
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('Error:', err.message);
+  // console.log('Error:', err.message);
   if (err.message.includes('Invalid zip code')) {
     res.status(400).json({ error: 'Invalid ZIP code provided' });
   } else if (err.message.includes('Weather data unavailable')) {
